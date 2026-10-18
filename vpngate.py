@@ -338,8 +338,28 @@ def check_one(node, session):
             out["error"] = f"HTTP {r.status_code}: {r.text[:500]}"
             out["worker_error"] = True
             return out
-        j = r.json()
-        ok = bool(j.get("success"))
+        content_type = r.headers.get("Content-Type", "")
+        if "application/json" not in content_type.lower():
+            out["error"] = (
+                f"Worker returned non-JSON: HTTP {r.status_code}, "
+                f"Content-Type={content_type}, Body={r.text[:300]!r}"
+            )
+            out["worker_error"] = True
+            return out
+        try:
+            j = r.json()
+        except ValueError as exc:
+            out["error"] = f"Invalid JSON: {exc}; Body={r.text[:300]!r}"
+            out["worker_error"] = True
+            return out
+        if not isinstance(j, dict) or not isinstance(j.get("success"), bool) or j.get("type") != "sstp":
+            out["error"] = (
+                "Unexpected Worker JSON schema: "
+                f"keys={list(j)[:12] if isinstance(j, dict) else type(j).__name__}"
+            )
+            out["worker_error"] = True
+            return out
+        ok = j["success"]
         out["success"] = ok
         out["status"] = "success" if ok else "failed"
         out["latency_ms"] = j.get("responseTime")
