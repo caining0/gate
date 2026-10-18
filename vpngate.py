@@ -335,7 +335,7 @@ def check_one(node, session):
     try:
         r = session.get(url, timeout=CHECK_TIMEOUT, headers={"User-Agent": "Mozilla/5.0 (gate-checker)"})
         if r.status_code != 200:
-            out["error"] = f"HTTP {r.status_code}"
+            out["error"] = f"HTTP {r.status_code}: {r.text[:500]}"
             out["worker_error"] = True
             return out
         j = r.json()
