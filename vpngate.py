@@ -21,7 +21,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import requests
 
@@ -333,7 +333,25 @@ def check_one(node, session):
     out["exit"] = None
     out["residential"] = "unknown"
     try:
+        # Only log URL structure, never query values or credentials.
+        requested = urlsplit(url)
+        print(
+            f"Worker request: host={requested.hostname}, path={requested.path}, "
+            f"query_key={requested.query.partition('=')[0]}",
+            flush=True,
+        )
         r = session.get(url, timeout=CHECK_TIMEOUT, headers={"User-Agent": "Mozilla/5.0 (gate-checker)"})
+        final = urlsplit(r.url)
+        redirect_paths = [
+            f"{resp.status_code}:{urlsplit(resp.url).hostname}{urlsplit(resp.url).path}"
+            for resp in r.history
+        ]
+        print(
+            f"Worker response: status={r.status_code}, "
+            f"final_host={final.hostname}, final_path={final.path}, "
+            f"redirects={redirect_paths}",
+            flush=True,
+        )
         if r.status_code != 200:
             out["error"] = f"HTTP {r.status_code}: {r.text[:500]}"
             out["worker_error"] = True
