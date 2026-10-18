@@ -496,6 +496,18 @@ def main():
     success = [r for r in results if r.get("success")]
     failed = [r for r in results if not r.get("success")]
     worker_errors = [r for r in failed if r.get("worker_error")]
+    from collections import Counter
+
+    error_stats = Counter(
+        str(r.get("error", "unknown"))
+        for r in worker_errors
+    )
+
+    for error, count in error_stats.most_common(10):
+        log(
+            "CLOUDFLARE WORKER",
+            f"异常类型: {error}，出现次数: {count}"
+        )
 
     log("CLOUDFLARE WORKER", f"检测成功: {len(success)}")
     log("CLOUDFLARE WORKER", f"检测失败: {len(failed)}" + (f" (其中 Worker 异常 {len(worker_errors)})" if worker_errors else ""))
