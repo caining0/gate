@@ -409,10 +409,21 @@ def check_one(node, session):
 
 def check_all(nodes, session):
     results = []
+    total = len(nodes)
+    started = time.monotonic()
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
         futures = [pool.submit(check_one, n, session) for n in nodes]
         for fut in as_completed(futures):
             results.append(fut.result())
+            completed = len(results)
+            if completed == 1 or completed % 5 == 0 or completed == total:
+                ok_count = sum(bool(r.get("success")) for r in results)
+                errors = sum(bool(r.get("worker_error")) for r in results)
+                log(
+                    "CLOUDFLARE WORKER",
+                    f"进度 {completed}/{total}, 成功 {ok_count}, Worker 异常 {errors}, "
+                    f"耗时 {time.monotonic() - started:.1f}s",
+                )
     return results
 
 # ---------------------------------------------------------------------------
